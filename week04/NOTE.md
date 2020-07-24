@@ -91,4 +91,26 @@ function foundB3(c) {
 }
 console.log(match("ababababx"));
 ```
+## HTTP
+##### ISO-OSI七层网络模型
+- 应用
+- 表示
+- 会话
+- 传输 TCP
+- 网络 internet IP
+- 数据链路
+- 物理
 
+##### TCP/IP
+- 流
+- 端口
+- require('net');
+
+- 包
+- IP地址
+- libnet/libpcap
+
+##### HTTP
+- request
+- response
+- 一一对应
