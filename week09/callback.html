@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        #ryg{
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+        }
+        .r{
+            background-color: #f00;
+        }
+        .g{
+            background-color: #0f0;
+        }
+        .y{
+            background-color: #ff0;
+        }
+    </style>
+</head>
+<body>
+    <p id="ryg"></p>
+    <script>
+        let ryg = document.getElementById("ryg");
+        function rygController(color, duration) {
+            ryg.className = color;
+            setTimeout(function () {
+                if (color === "r") {
+                    rygController("g", 10);
+                }
+                if (color === "y") {
+                    rygController("r", 5);
+                }
+                if (color === "g") {
+                    rygController("y", 2);
+                }
+            }, duration*1000)
+        }
+        rygController("r", 5);
+    </script>
+</body>
+</html>
