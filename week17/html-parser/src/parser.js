@@ -6,128 +6,6 @@ let currentToken = null;
 let currentAttribute = null;
 let currentTextNode = null;
 
-let rules = [];
-function addCSSRules(text){
-    // var ast = css.parse(text);
-    // rules.push(...ast.stylesheet.rules);
-}
-
-function match(element, selector) {
-    if(!selector || !element.attributes){
-        return false;
-    }
-    var selectorArr = selector.match(/(#|.)?[\w]+/g);
-    if (selectorArr.length > 1) {
-        for (let i = 0; i < selectorArr.length; i++) {
-            if(!match(element, selectorArr[i])){
-                return false;
-            }
-        }
-        return true;
-    }
-    if(selector.charAt(0) === "#"){
-        var attr = element.attributes.filter((attr) => {
-            return attr.name === "id"
-        })[0]
-        if (attr && attr.value === selector.replace("#", '')) {
-            return true;
-        }
-    }else if(selector.charAt(0) === "."){
-        var attr = element.attributes.filter((attr) =>{
-            return attr.name === "class"
-        })[0]
-        if (attr) {
-            return attr.value.split(" ").some((value) => {
-                return value === selector.replace(".", '');
-            });
-        }
-    } else if (element.tagName === selector){
-        return true
-    }
-    return false;
-}
-
-function computeCSS(element) {
-    var elements = stack.slice().reverse();
-    if(!element.computedStyle){
-        element.computedStyle = {};
-    }
-    for(let rule of rules){
-        //不考虑"，" 
-        var selectorParts = rule.selectors[0].split(" ").reverse();
-    
-        if(!match(element, selectorParts[0])){
-            continue;
-        }
-        
- 
-        let matched = false;
-
-        var j = 1;
-        for (let i = 0; i < elements.length; i++) {
-            if (match(elements[i], selectorParts[j])) {
-                j++;
-            }
-        }
-        if (j >= selectorParts.length) {
-            matched = true;
-        }
-        if (matched) {
-            var sp = specificity(rule.selectors[0]);
-            var computedStyle = element.computedStyle;
-
-            for (var declaration of rule.declarations) {
-                if(!computedStyle[declaration.property]){
-                    computedStyle[declaration.property] = {};
-                }
-
-                if (!computedStyle[declaration.property].specificity) {
-                    computedStyle[declaration.property].value = declaration.value;
-                    computedStyle[declaration.property].specificity = sp;
-                }else if(compare(computedStyle[declaration.property].specificity, sp) <= 0){
-                    computedStyle[declaration.property].value = declaration.value;
-                    computedStyle[declaration.property].specificity = sp;
-                }
-            }
-            
-            // console.log("Element", element, "matched", rule);
-        }
-    }
-}
-
-function specificity(selector) {
-    var p = [0,0,0,0];
-    // 作业
-    selectorParts = [];
-    selector.split(" ").map((part) => {
-        let parts = part.match(/(#|.)?[\w]+/g);
-        for (let i = 0; i < parts.length; i++) {
-            selectorParts.push(parts[i]);
-        }
-    });
-
-    for (var part of selectorParts) {
-        if(part.charAt(0) === "#"){
-            p[1] += 1;
-        }else if(part.charAt(0) === "."){
-            p[2] += 1;
-        }else{
-            p[3] += 1;
-        }
-    }
-    return p;
-}
-
-function compare(sp1, sp2) {
-    if(sp1[0] - sp2[0])
-        return sp1[0] - sp2[0];
-    if(sp1[1] - sp2[1])
-        return sp1[1] - sp2[1];
-    if(sp1[2] - sp2[2])
-        return sp1[2] - sp2[2];
-
-    return sp1[3] - sp2[3];
-}
 
 function emit(token) {
     let top = stack[stack.length - 1];
@@ -160,9 +38,6 @@ function emit(token) {
         if (top.tagName != token.tagName) {
             throw new Error("tag start end doesn't match!");
         } else {
-            if(top.tagName === "style"){
-                addCSSRules(top.children[0].content);
-            }
             stack.pop();
         }
         currentTextNode = null;
@@ -208,21 +83,25 @@ function tagOpen(c) {
         }
         return tagName(c);
     } else {
-        return ;
+        emit({
+            type: "text",
+            content: c
+        })
+        return data;
     }
 }
 
 function endTagOpen(c) {
-    if(c.match(/^[a-zA-Z]$/)){
+    if(c === EOF){
+        throw new Error("endtag error")
+    }else if (c.match(/^[a-zA-Z]$/)){
         currentToken = {
             type: "endTag",
             tagName: ""
         }
         return tagName(c);
     } else if (c === ">"){
-        
-    } else if (c === EOF){
-
+        throw new Error("unexpected charater \"" + c +"\"")
     } else {
 
     }
@@ -289,7 +168,7 @@ function attributeName(c){
     } else if (c === "="){
         return beforeAttributeValue;
     } else if (c === "\u0000"){
-         
+         throw new Error("attributeName error")
     } else if (c === "\"" || c === "'" || c === "<") {
 
     } else {
@@ -313,7 +192,9 @@ function beforeAttributeValue(c) {
 }
 
 function afterQuotedAttributeValue(c) {
-    if(c.match(/^[\t\n\f ]$/)){
+    if(c === EOF){
+        throw new Error("tag error")
+    } else if (c.match(/^[\t\n\f ]$/)){
         return beforeAttributeName;
     } else if(c === "/") {
         return selfClosingStartTag;
@@ -321,11 +202,8 @@ function afterQuotedAttributeValue(c) {
         currentToken[currentAttribute.name] = currentAttribute.value;
         emit(currentToken);
         return data;
-    } else if (c === EOF){
-
     } else {
-        currentAttribute.value += c;
-        return doubleQuotedAttributeValue;
+        throw new Error("unexpected charater \"" + c +"\"")
     }
 }
 
@@ -334,7 +212,7 @@ function doubleQuotedAttributeValue(c) {
         currentToken[currentAttribute.name] = currentAttribute.value;
         return afterQuotedAttributeValue;
     } else if (c === "\u0000") {
-        
+        throw new Error("doubleQuotedAttributeValue error")
     } else if (c === EOF){
 
     } else {
@@ -363,6 +241,7 @@ function UnquotedAttributeValue(c) {
         return beforeAttributeName;
     } else if (c === "/") {
         currentToken[currentAttribute.name] = currentAttribute.value;
+        return selfClosingStartTag;
     } else if (c === ">"){
         currentToken[currentAttribute.name] = currentAttribute.value;
         emit(currentToken);
@@ -384,8 +263,8 @@ function selfClosingStartTag(c) {
         currentToken.isSelfClosing = true;
         emit(currentToken);
         return data;
-    } else if (c === "EOF"){
-
+    } else if (c === EOF){
+        throw new Error("selfClosingStartTag miss '>'")
     } else {
 
     }
